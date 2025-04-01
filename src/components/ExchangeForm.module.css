@@ -1,23 +1,18 @@
-body {
-    font-family: 'Inter', sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
 input:focus{
     outline: none;
 }
 
 .container {
+    max-width: calc(100vw - 48px);
+    box-sizing: border-box;
+    padding: 4px 24px;
     width: 100%;
-    margin: 4px 20px 0 24px;
     display: flex;
     flex-direction: column;
     row-gap: 43px;
 }
 
-.input_wrapper{
+.inputWrapper{
     position: relative;
     border-bottom: 1px solid #A6A6A666;
     padding-bottom: 8px;
@@ -25,11 +20,12 @@ input:focus{
     column-gap: 8px;
     width: 100%;
     align-items: center;
-    flex-direction: row-reverse;
+    flex-direction: row;
     justify-content: start;
+    max-width: 100%;
 }
 
-.input_wrapper input{
+.inputWrapper input{
     border: none;
     position: relative;
     box-sizing: border-box;
@@ -40,15 +36,16 @@ input:focus{
     min-width: 0;
     width: auto;
     flex: 1;
+
 }
 
-.input_wrapper label{
+.inputWrapper label{
     font-size: 32px;
     font-weight: 600;
     color: #168ACD;
 }
 
-.progress-bar {
+.progressBar {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
     justify-content: space-between;
@@ -56,9 +53,10 @@ input:focus{
     margin-top: 10px;
     position: relative;
     column-gap: 8px;
+    max-width: 100%;
 }
 
-.segment, .segment2 {
+.segment {
     height: 24px;
     font-size: 12px;
     font-weight: 600;
@@ -70,19 +68,24 @@ input:focus{
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
+    cursor: pointer;
 }
 
-.progress-overlay {
+.segment:hover{
+    opacity: .7;
+}
+
+.progressOverlay {
     position: absolute;
     top: 0;
     left: 0;
     height: 100%;
-    width: 0%;
+    width: 0;
     background-color: #168ACD;
 }
 
-.segment span, .segment2 span {
-    color: #7A7A7A;
+.segment span {
     position: relative;
     display: block;
     width: 100%;
@@ -94,5 +97,9 @@ input:focus{
     .container{
         flex-direction: row;
         column-gap: 24px;
+    }
+
+    .col{
+        max-width: 50%;
     }
 }

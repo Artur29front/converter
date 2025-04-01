@@ -1,178 +1,251 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import './ExchangeForm.css';
+import React, { useState, useEffect, useRef } from "react";
+import styles from './ExchangeForm.module.css';
 
-interface ApiResponse {
-    inAmount: number;
-    outAmount: number;
-    isStraight: boolean;
-    price: [string, string];
-}
+const API_URL = "/b2api/change/user/pair/calc";
+const API_HEADERS = { serial: "a7307e89-fbeb-4b28-a8ce-55b7fb3c32aa" };
+const PAIR_ID = 133;
+const REQUEST_INTERVAL = 1000;
+const RUB_MIN = 10000;
+const RUB_MAX = 70000000;
+const RUB_STEP = 100;
+const USDT_STEP = 0.000001;
+const USDT_MAX = 1000000;
+const USDT_MIN = 0;
 
 const ExchangeForm = () => {
-    // Константы из ТЗ
-    const API_URL = 'https://awx.pro/b2api/change/user/pair/calc';
-    const API_HEADERS = { serial: 'a7307e89-fbeb-4b28-a8ce-55b7fb3c32aa' };
-    const PAIR_ID = 133;
-    const LEFT_MIN = 10000;
-    const LEFT_MAX = 70000000;
-    const LEFT_STEP = 100;
+    const [rubValue, setRubValue] = useState("100");
+    const [usdtValue, setUsdtValue] = useState("");
+    const [price, setPrice] = useState([1, 1]);
+    const isUserTyping = useRef(false);
 
-    // Состояния
-    const [leftValue, setLeftValue] = useState<string>(LEFT_MIN.toString());
-    const [rightValue, setRightValue] = useState<string>('0');
-    const [price, setPrice] = useState<[number, number]>([1, 1]);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const lastRequestTime = useRef<number>(0);
+    const formatDecimal = (value: string, decimals: number): string => {
+        let num = parseFloat(value);
+        if (isNaN(num)) return value;
 
-    // Проверка допустимости значения для левого инпута
-    const isValidLeftValue = useCallback((value: number) => {
-        return value >= LEFT_MIN && value <= LEFT_MAX && value % LEFT_STEP === 0;
-    }, []);
-
-    // Проверка допустимости значения для правого инпута
-    const isValidRightValue = useCallback((value: number) => {
-        return value >= 0;
-    }, []);
-
-    // Форматирование числа с учетом Decimal
-    const formatDecimal = (value: number, precision: number) => {
-        return value.toFixed(precision).replace(/\.?0+$/, '');
+        return num.toFixed(decimals).replace(/\.?0+$/, '');
     };
 
-    // Запрос к API с защитой от превышения лимита
-    const fetchExchangeRate = useCallback(async () => {
-        const now = Date.now();
-        if (now - lastRequestTime.current < 1000) return;
-
-        setIsLoading(true);
-        lastRequestTime.current = now;
-
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...API_HEADERS
-                },
-                body: JSON.stringify({
-                    pairId: PAIR_ID,
-                    inAmount: 1,
-                    outAmount: null
-                })
-            });
-
-            if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-            const data: ApiResponse = await response.json();
-            const parsedPrice: [number, number] = [
-                parseFloat(data.price[0]),
-                parseFloat(data.price[1])
-            ];
-            setPrice(parsedPrice);
-
-            // Обновляем правое значение при получении нового курса
-            const leftNum = parseFloat(leftValue);
-            if (!isNaN(leftNum) {
-                setRightValue(formatDecimal(leftNum * parsedPrice[1], 6));
-            }
-        } catch (error) {
-            console.error('Failed to fetch exchange rate:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [leftValue]);
-
-    // Эффект для периодического обновления курса
     useEffect(() => {
         const interval = setInterval(() => {
-            fetchExchangeRate();
-        }, 1000);
-
-        // Первоначальный запрос
-        fetchExchangeRate();
+            if (!isUserTyping.current) {
+                fetchExchangeRate();
+            }
+        }, REQUEST_INTERVAL);
 
         return () => clearInterval(interval);
-    }, [fetchExchangeRate]);
+    }, []);
 
-    // Обработчик изменения левого инпута
-    const handleLeftChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        const num = parseFloat(value);
-
-        if (value === '' || isNaN(num)) {
-            setLeftValue(LEFT_MIN.toString());
-            setRightValue('0');
-            return;
-        }
-
-        if (isValidLeftValue(num)) {
-            setLeftValue(value);
-            setRightValue(formatDecimal(num * price[1], 6));
-        }
-    };
-
-    // Обработчик изменения правого инпута
-    const handleRightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        const num = parseFloat(value);
-
-        if (value === '' || isNaN(num)) {
-            setRightValue('0');
-            setLeftValue(LEFT_MIN.toString());
-            return;
-        }
-
-        if (isValidRightValue(num)) {
-            setRightValue(value);
-            const convertedValue = num / price[1];
-            if (isValidLeftValue(convertedValue)) {
-                setLeftValue(convertedValue.toString());
+    useEffect(() => {
+        if (!isUserTyping.current && price[1]) {
+            const num = parseFloat(rubValue);
+            if (!isNaN(num)) {
+                setUsdtValue(formatDecimal((num * price[1]).toString(), 6));
             }
         }
+    }, [rubValue, price]);
+
+    const fetchExchangeRate = async () => {
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...API_HEADERS },
+                body: JSON.stringify({ pairId: PAIR_ID, inAmount: 1, outAmount: null }),
+                mode: "cors",
+            });
+
+            if (!response.ok) throw new Error(`Ошибка: ${response.status}`);
+
+            const data = await response.json();
+
+            setPrice([parseFloat(data.price[0]), parseFloat(data.price[1])]);
+        } catch (error) {
+            console.error("API error", error);
+        }
     };
 
-    // Расчет прогресса для шкалы
-    const progress = ((parseFloat(leftValue) - LEFT_MIN) / (LEFT_MAX - LEFT_MIN)) * 100;
+    const handleRubChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+
+        if (!/^-?\d*\.?\d*$/.test(value)) return;
+        if ((value.match(/\./g) || []).length > 1) return;
+        if (value.indexOf('-') > 0) return;
+
+        setRubValue(value);
+        isUserTyping.current = true;
+
+        const num = parseFloat(value);
+        if (!isNaN(num) && num >= RUB_MIN && num <= RUB_MAX) {
+            setUsdtValue(formatDecimal((num * price[1]).toString(), 6));
+        }
+    };
+
+    const handleUsdtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+
+        if (!/^-?\d*\.?\d*$/.test(value)) return;
+        if ((value.match(/\./g) || []).length > 1) return;
+        if (value.indexOf('-') > 0) return;
+
+        setUsdtValue(value);
+        isUserTyping.current = true;
+
+        const num = parseFloat(value);
+        if (!isNaN(num) && num >= USDT_MIN && num <= USDT_MAX) {
+            const converted = num / price[1];
+            setRubValue(formatDecimal(converted.toString(), 2));
+        }
+    };
+    const handleBlur = () => {
+        isUserTyping.current = false;
+
+        const rubNum = parseFloat(rubValue);
+        const usdtNum = parseFloat(usdtValue);
+
+        if (isNaN(rubNum) || rubNum < 10) {
+            setRubValue("10000");
+        } else if (rubNum > 70000000) {
+            setRubValue("70000000");
+        }
+
+        if (isNaN(usdtNum) || usdtNum < 0) {
+            setUsdtValue(formatDecimal((rubNum * price[1]).toString(), 6));        }
+    };
+
+    const calculaterubProgress = () => {
+        const value = parseFloat(usdtValue) || RUB_MIN;
+        return ((value - RUB_MIN) / (RUB_MAX - RUB_MIN)) * 100;
+    };
+
+    const calculateusdtProgress = () => {
+        const value = parseFloat(rubValue) || USDT_MIN;
+        return ((value - USDT_MIN) / (USDT_MAX - USDT_MIN)) * 100;
+    };
+
+    const handleusdtSegmentClick = (percentage: number) => {
+        const newValue = USDT_MIN + (USDT_MAX - USDT_MIN) * (percentage / 100);
+        setRubValue(Math.round(newValue).toString());
+        setUsdtValue((newValue * price[1]).toFixed(6));
+        isUserTyping.current = false;
+    };
+
+    const handlerubSegmentClick = (percentage: number) => {
+        const newValue = RUB_MIN + (RUB_MAX - RUB_MIN) * (percentage / 100);
+        setUsdtValue(newValue.toFixed(6));
+        setRubValue((newValue / price[1]).toFixed(2));
+        isUserTyping.current = false;
+    };
+
+    const renderrubProgressSegments = () => {
+        const progress = calculaterubProgress();
+
+        return [25, 50, 75, 100].map((segmentValue) => (
+            <Segment
+                key={`rub-${segmentValue}`}
+                segmentValue={segmentValue}
+                progress={progress}
+                onClick={() => handlerubSegmentClick(segmentValue)}
+            />
+        ));
+    };
+
+    const renderusdtProgressSegments = () => {
+        const progress = calculateusdtProgress();
+
+        return [25, 50, 75, 100].map((segmentValue) => (
+            <Segment
+                key={`usdt-${segmentValue}`}
+                segmentValue={segmentValue}
+                progress={progress}
+                onClick={() => handleusdtSegmentClick(segmentValue)}
+            />
+        ));
+    };
+    return (
+        <form className={styles.container}>
+                <div className={styles.col}>
+                    <div className={styles.inputWrapper}>
+                        <input
+                            id="rub"
+                            type="text"
+                            inputMode="decimal"
+                            className="exchange-input"
+                            value={usdtValue}
+                            onChange={handleUsdtChange}
+                            onBlur={handleBlur}
+                            onFocus={() => isUserTyping.current = true}
+                            max={RUB_MAX}
+                            min={RUB_MIN}
+                            step={RUB_STEP}
+                        />
+                        <label htmlFor="rub">RUB</label>
+                    </div>
+
+                    <div className={styles.progressBar}>
+                        {renderrubProgressSegments()}
+                    </div>
+
+                </div>
+
+                <div className={styles.col}>
+                    <div className={styles.inputWrapper}>
+                        <input
+                            id="usdt"
+                            type="text"
+                            inputMode="decimal"
+                            className="exchange-input"
+                            value={rubValue}
+                            onChange={handleRubChange}
+                            onBlur={handleBlur}
+                            onFocus={() => isUserTyping.current = true}
+                            max={USDT_MAX}
+                            min={USDT_MIN}
+                            step={USDT_STEP}
+                        />
+                        <label htmlFor="usdt">USDT</label>
+                    </div>
+
+                    <div className={styles.progressBar}>
+                        {renderusdtProgressSegments()}
+                    </div>
+                </div>
+        </form>
+    );
+};
+
+const Segment: React.FC<{
+    segmentValue: number;
+    progress: number;
+    onClick: () => void;
+}> = ({ segmentValue, progress, onClick }) => {
+    const segmentProgress = Math.min(100, Math.max(0, ((progress - (segmentValue - 25)) / 25) * 100));
+    const isActive = progress >= segmentValue;
+    const isPartial = progress > segmentValue - 25 && !isActive;
 
     return (
-        <div className="exchange-form">
-            <div className="input-container">
-                <input
-                    type="number"
-                    min={LEFT_MIN}
-                    max={LEFT_MAX}
-                    step={LEFT_STEP}
-                    value={leftValue}
-                    onChange={handleLeftChange}
-                    disabled={isLoading}
-                    className="exchange-input"
-                    aria-label="Left exchange input"
-                />
-            </div>
-
-            <div className="input-container">
-                <input
-                    type="number"
-                    min={0}
-                    step={0.000001}
-                    value={rightValue}
-                    onChange={handleRightChange}
-                    disabled={isLoading}
-                    className="exchange-input"
-                    aria-label="Right exchange input"
-                />
-            </div>
-
-            <div className="progress-bar-container">
-                <div
-                    className="progress-bar"
-                    style={{ width: `${progress}%` }}
-                    aria-valuenow={progress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                ></div>
-            </div>
-        </div>
+        <button
+            className={styles.segment}
+            onClick={onClick}
+            type="button"
+        >
+            <div
+                className={styles.progressOverlay}
+                style={{
+                    width: isActive ? '100%' : isPartial ? `${segmentProgress}%` : '0%',
+                    backgroundColor: isActive || isPartial ? '#168ACD' : '#ffffff'
+                }}
+            />
+            <span style={{
+                backgroundImage: isActive || isPartial ?
+                    `linear-gradient(90deg, white ${segmentProgress}%, gray ${segmentProgress}%)` :
+                    'gray',
+                padding: '0',
+                color: isActive ? 'white' : isPartial ? 'transparent' : 'gray',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text'
+            }}>
+                {segmentValue}%
+            </span>
+        </button>
     );
 };
 
