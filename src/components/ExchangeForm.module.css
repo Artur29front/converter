@@ -3,7 +3,7 @@ input:focus{
 }
 
 .container {
-    max-width: calc(100vw - 48px);
+    max-width: 100vw;
     box-sizing: border-box;
     padding: 4px 24px;
     width: 100%;
@@ -97,6 +97,7 @@ input:focus{
     .container{
         flex-direction: row;
         column-gap: 24px;
+        max-width: calc(100vw - 48px);
     }
 
     .col{
