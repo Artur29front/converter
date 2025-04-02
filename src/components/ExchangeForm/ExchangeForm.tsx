@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Segment from "../Segment/Segment"
 import styles from './ExchangeForm.module.css';
 
 const API_URL = "/b2api/change/user/pair/calc";
@@ -39,7 +40,7 @@ const ExchangeForm = () => {
         if (!isUserTyping.current && price[1]) {
             const num = parseFloat(rubValue);
             if (!isNaN(num)) {
-                setUsdtValue(formatDecimal((num * price[1]).toString(), 6));
+                setUsdtValue(formatDecimal((num * price[1]).toString(), 4));
             }
         }
     }, [rubValue, price]);
@@ -75,7 +76,7 @@ const ExchangeForm = () => {
 
         const num = parseFloat(value);
         if (!isNaN(num) && num >= RUB_MIN && num <= RUB_MAX) {
-            setUsdtValue(formatDecimal((num * price[1]).toString(), 6));
+            setUsdtValue(formatDecimal((num * price[1]).toString(), 4));
         }
     };
 
@@ -101,62 +102,62 @@ const ExchangeForm = () => {
         const rubNum = parseFloat(rubValue);
         const usdtNum = parseFloat(usdtValue);
 
-        if (isNaN(rubNum) || rubNum < 10) {
-            setRubValue("10000");
+        if (isNaN(rubNum) || rubNum < 1) {
+            setUsdtValue("10000");
         } else if (rubNum > 70000000) {
             setRubValue("70000000");
         }
 
         if (isNaN(usdtNum) || usdtNum < 0) {
-            setUsdtValue(formatDecimal((rubNum * price[1]).toString(), 6));        }
+            setUsdtValue(formatDecimal((rubNum * price[1]).toString(), 4));        }
     };
 
-    const calculaterubProgress = () => {
+    const calculateRubProgress = () => {
         const value = parseFloat(usdtValue) || RUB_MIN;
         return ((value - RUB_MIN) / (RUB_MAX - RUB_MIN)) * 100;
     };
 
-    const calculateusdtProgress = () => {
+    const calculateUsdtProgress = () => {
         const value = parseFloat(rubValue) || USDT_MIN;
         return ((value - USDT_MIN) / (USDT_MAX - USDT_MIN)) * 100;
     };
 
-    const handleusdtSegmentClick = (percentage: number) => {
+    const handleUsdtSegmentClick = (percentage: number) => {
         const newValue = USDT_MIN + (USDT_MAX - USDT_MIN) * (percentage / 100);
         setRubValue(Math.round(newValue).toString());
-        setUsdtValue((newValue * price[1]).toFixed(6));
+        setUsdtValue((newValue * price[1]).toFixed(4));
         isUserTyping.current = false;
     };
 
-    const handlerubSegmentClick = (percentage: number) => {
+    const handleRubSegmentClick = (percentage: number) => {
         const newValue = RUB_MIN + (RUB_MAX - RUB_MIN) * (percentage / 100);
-        setUsdtValue(newValue.toFixed(6));
+        setUsdtValue(newValue.toFixed(4));
         setRubValue((newValue / price[1]).toFixed(2));
         isUserTyping.current = false;
     };
 
-    const renderrubProgressSegments = () => {
-        const progress = calculaterubProgress();
+    const renderRubProgressSegments = () => {
+        const progress = calculateRubProgress();
 
         return [25, 50, 75, 100].map((segmentValue) => (
             <Segment
                 key={`rub-${segmentValue}`}
                 segmentValue={segmentValue}
                 progress={progress}
-                onClick={() => handlerubSegmentClick(segmentValue)}
+                onClick={() => handleRubSegmentClick(segmentValue)}
             />
         ));
     };
 
-    const renderusdtProgressSegments = () => {
-        const progress = calculateusdtProgress();
+    const renderUsdtProgressSegments = () => {
+        const progress = calculateUsdtProgress();
 
         return [25, 50, 75, 100].map((segmentValue) => (
             <Segment
                 key={`usdt-${segmentValue}`}
                 segmentValue={segmentValue}
                 progress={progress}
-                onClick={() => handleusdtSegmentClick(segmentValue)}
+                onClick={() => handleUsdtSegmentClick(segmentValue)}
             />
         ));
     };
@@ -181,7 +182,7 @@ const ExchangeForm = () => {
                     </div>
 
                     <div className={styles.progressBar}>
-                        {renderrubProgressSegments()}
+                        {renderRubProgressSegments()}
                     </div>
 
                 </div>
@@ -205,48 +206,13 @@ const ExchangeForm = () => {
                     </div>
 
                     <div className={styles.progressBar}>
-                        {renderusdtProgressSegments()}
+                        {renderUsdtProgressSegments()}
                     </div>
                 </div>
         </form>
     );
 };
 
-const Segment: React.FC<{
-    segmentValue: number;
-    progress: number;
-    onClick: () => void;
-}> = ({ segmentValue, progress, onClick }) => {
-    const segmentProgress = Math.min(100, Math.max(0, ((progress - (segmentValue - 25)) / 25) * 100));
-    const isActive = progress >= segmentValue;
-    const isPartial = progress > segmentValue - 25 && !isActive;
 
-    return (
-        <button
-            className={styles.segment}
-            onClick={onClick}
-            type="button"
-        >
-            <div
-                className={styles.progressOverlay}
-                style={{
-                    width: isActive ? '100%' : isPartial ? `${segmentProgress}%` : '0%',
-                    backgroundColor: isActive || isPartial ? '#168ACD' : '#ffffff'
-                }}
-            />
-            <span style={{
-                backgroundImage: isActive || isPartial ?
-                    `linear-gradient(90deg, white ${segmentProgress}%, gray ${segmentProgress}%)` :
-                    'gray',
-                padding: '0',
-                color: isActive ? 'white' : isPartial ? 'transparent' : 'gray',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text'
-            }}>
-                {segmentValue}%
-            </span>
-        </button>
-    );
-};
 
 export default ExchangeForm;

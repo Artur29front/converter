@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import ExchangeForm from "../src/components/ExcangeForm";
+import ExchangeForm from "./components/ExchangeForm/ExchangeForm";
 
 function App() {
   return (
